@@ -112,7 +112,7 @@ int httpGet(char* pAddress, int pPort, char* pRequest)
 
 	}
 
-	if(!success == 1)
+	if((!success) == 1)
 	{
 		close(sockId);
 		return 0;

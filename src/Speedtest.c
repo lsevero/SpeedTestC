@@ -3,6 +3,7 @@
 
 	Michał Obrembski (byku@byku.com.pl)
 */
+#include "csv.h"
 #include "http.h"
 #include "SpeedtestConfig.h"
 #include "SpeedtestServers.h"
@@ -15,12 +16,13 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
+#include <time.h>
 
 // strdup isnt a C99 function, so we need it to define itself
 char *strdup(const char *str)
 {
     int n = strlen(str) + 1;
-    char *dup = malloc(n);
+    char *dup = (char*)malloc(n);
     if(dup)
     {
         strcpy(dup, str);
@@ -58,13 +60,15 @@ void parseCmdLine(int argc, char **argv) {
             \t--downtimes TIMES - how many times repeat download test.\n\
             \tSingle download test is downloading 30MB file.\n\
             \t--randomize NUMBER - randomize server usage for NUMBER of best servers\n\
+            \t--csv - Output the results in csv in the format:\n\
+            date, ping (ms), download (kB/s),upload (kB/s)\n\
             \nDefault action: Get server from Speedtest.NET infrastructure\n\
             and test download with 30MB download size and 1MB upload size.\n");
             exit(1);
         }
         if(strcmp("--server", argv[i]) == 0)
         {
-            downloadUrl = malloc(sizeof(char) * strlen(argv[i+1]) + 1);
+            downloadUrl = (char*)malloc(sizeof(char) * strlen(argv[i+1]) + 1);
             strcpy(downloadUrl, argv[i + 1]);
         }
         if(strcmp("--upsize", argv[i]) == 0)
@@ -78,6 +82,10 @@ void parseCmdLine(int argc, char **argv) {
         if(strcmp("--randomize", argv[i]) == 0)
         {
             randomizeBestServers = strtoul(argv[i + 1], NULL, 10);
+        }
+        if(strcmp("--csv", argv[i]) == 0)
+        {
+            csvOutput=1;
         }
     }
 }
@@ -97,23 +105,23 @@ void getBestServer()
     speedTestConfig = getConfig();
     if (speedTestConfig == NULL)
     {
-        printf("Cannot download speedtest.net configuration. Something is wrong...\n");
+        if(!csvOutput) printf("Cannot download speedtest.net configuration. Something is wrong...\n");
         freeMem();
         exit(1);
     }
-    printf("Your IP: %s And ISP: %s\n",
+    if(!csvOutput) printf("Your IP: %s And ISP: %s\n",
                 speedTestConfig->ip, speedTestConfig->isp);
-    printf("Lat: %f Lon: %f\n", speedTestConfig->lat, speedTestConfig->lon);
+    if(!csvOutput) printf("Lat: %f Lon: %f\n", speedTestConfig->lat, speedTestConfig->lon);
     serverList = getServers(&serverCount, "http://www.speedtest.net/speedtest-servers-static.php");
     if (serverCount == 0)
     {
         // Primary server is not responding. Let's give a try with secondary one.
         serverList = getServers(&serverCount, "http://c.speedtest.net/speedtest-servers-static.php");
     }
-    printf("Grabbed %d servers\n", serverCount);
+    if(!csvOutput) printf("Grabbed %d servers\n", serverCount);
     if (serverCount == 0)
     {
-        printf("Cannot download any speedtest.net server. Something is wrong...\n");
+        if(!csvOutput) printf("Cannot download any speedtest.net server. Something is wrong...\n");
         freeMem();
         exit(1);
     }
@@ -127,16 +135,16 @@ void getBestServer()
                 (int (*)(const void *,const void *)) sortServers);
 
     if (randomizeBestServers != 0) {
-        printf("Randomizing selection of %d best servers...\n", randomizeBestServers);
+        if(!csvOutput) printf("Randomizing selection of %d best servers...\n", randomizeBestServers);
         srand(time(NULL));
         selectedServer = rand() % randomizeBestServers;
     }
 
-    printf("Best Server URL: %s\n\t Name: %s Country: %s Sponsor: %s Dist: %ld km\n",
+    if(!csvOutput) printf("Best Server URL: %s\n\t Name: %s Country: %s Sponsor: %s Dist: %ld km\n",
         serverList[selectedServer]->url, serverList[selectedServer]->name, serverList[selectedServer]->country,
         serverList[selectedServer]->sponsor, serverList[selectedServer]->distance);
     downloadUrl = getServerDownloadUrl(serverList[selectedServer]->url);
-    uploadUrl = malloc(sizeof(char) * strlen(serverList[selectedServer]->url) + 1);
+    uploadUrl = (char*)malloc(sizeof(char) * strlen(serverList[selectedServer]->url) + 1);
     strcpy(uploadUrl, serverList[selectedServer]->url);
 
     for(i=0; i<serverCount; i++){
@@ -152,13 +160,13 @@ static void getUserDefinedServer()
 {
     /* When user specify server URL, then we're not downloading config,
     so we need to specify thread count */
-    speedTestConfig = malloc(sizeof(struct speedtestConfig));
+    speedTestConfig = (struct speedtestConfig*)malloc(sizeof(struct speedtestConfig));
     speedTestConfig->downloadThreadConfig.threadsCount = 4;
     speedTestConfig->uploadThreadConfig.threadsCount = 2;
     speedTestConfig->uploadThreadConfig.length = 3;
 
     uploadUrl = downloadUrl;
-    tmpUrl = malloc(sizeof(char) * strlen(downloadUrl) + 1);
+    tmpUrl = (char*)malloc(sizeof(char) * strlen(downloadUrl) + 1);
     strcpy(tmpUrl, downloadUrl);
     downloadUrl = getServerDownloadUrl(tmpUrl);
     free(tmpUrl);
@@ -166,6 +174,7 @@ static void getUserDefinedServer()
 
 int main(int argc, char **argv)
 {
+  csvOutput=0;
   totalTransfered = 1024 * 1024;
   totalToBeTransfered = 1024 * 1024;
   totalDownloadTestCount = 1;
@@ -183,6 +192,21 @@ int main(int argc, char **argv)
   }
 
   latencyUrl = getLatencyUrl(uploadUrl);
+  if(csvOutput)
+  {
+      time_t rawtime;
+      struct tm * timeinfo;
+
+      time (&rawtime);
+      timeinfo = localtime (&rawtime);
+      printf("%04d-%02d-%02dT%02d:%02d:%02dZ,",
+            timeinfo->tm_year+1900,
+            timeinfo->tm_mon+1,
+            timeinfo->tm_mday,
+            timeinfo->tm_hour,
+            timeinfo->tm_min,
+            timeinfo->tm_sec);
+  }
   testLatency(latencyUrl);
   testDownload(downloadUrl);
   testUpload(uploadUrl);
