@@ -61,7 +61,7 @@ void parseCmdLine(int argc, char **argv) {
             \tSingle download test is downloading 30MB file.\n\
             \t--randomize NUMBER - randomize server usage for NUMBER of best servers\n\
             \t--csv - Output the results in csv in the format:\n\
-            date, ping (ms), download (kB/s),upload (kB/s)\n\
+            \tdate, ping (ms), download (kB/s),upload (kB/s)\n\
             \nDefault action: Get server from Speedtest.NET infrastructure\n\
             and test download with 30MB download size and 1MB upload size.\n");
             exit(1);
