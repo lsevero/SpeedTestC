@@ -1,3 +1,7 @@
+I've created created this fork to add a '--csv' option to the program.
+
+=============================
+
 Client for SpeedTest.net infrastructure written in pure C99 standard using only POSIX libraries.
 
 Main purpose for this project was to deliver client for Speedtest.net 
