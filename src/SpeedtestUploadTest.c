@@ -110,7 +110,7 @@ void testUpload(const char *url)
     }
     free(param);
     if(csvOutput)
-        printf("%.4f\n",speed);
+        printf("%.2f\n",speed*8/1024);
     else
         printf("Bytes %lu uploaded with a speed %.2f kB/s (%.2f Mbit/s)\n",
                 totalTransfered, speed, speed * 8 / 1024);

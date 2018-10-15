@@ -78,7 +78,7 @@ void testDownload(const char *url)
 
     /* Report */
     if(csvOutput)
-        printf("%.4f,",speed);
+        printf("%.2f,",speed*8/1024);
     else
         printf("Bytes %lu downloaded with a speed %.2f kB/s (%.2f Mbit/s)\n",
                 totalTransfered, speed, speed * 8 / 1024);
